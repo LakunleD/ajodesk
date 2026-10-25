@@ -1,0 +1,20 @@
+{
+  "name": "ajodesk",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "api:dev": "npm run start:dev -w apps/api",
+    "api:test": "npm run test -w apps/api",
+    "api:test:e2e": "npm run test:e2e -w apps/api",
+    "db:up": "docker compose up -d db",
+    "web:dev": "npm run dev -w apps/web"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

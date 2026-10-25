@@ -1,0 +1,61 @@
+# Render Blueprint: AjoDesk API + web dashboard, both built from this repo's Dockerfiles.
+# The database is external (Neon); there is no Render Postgres here.
+# Region matches the Neon project (AWS us-east-2 / Ohio) to keep DB latency low.
+services:
+  - type: web
+    name: ajodesk-api
+    runtime: docker
+    plan: free
+    region: ohio
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    # Starts with the image CMD (node dist/main.js). No migrations here: the Neon database is
+    # migrated separately (npm run migration:run -w apps/api with DATABASE_URL set to Neon).
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: commit
+    buildFilter:
+      paths:
+        - apps/api/**
+        - package.json
+        - package-lock.json
+    envVars:
+      # Neon direct (non-pooler) connection string with sslmode=verify-full.
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      # Must equal the pepper used wherever integration keys are issued (the CLI on your
+      # machine), or those keys won't authenticate here. Paste the value from your local .env.
+      - key: INTEGRATION_KEY_PEPPER
+        sync: false
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DB_CONNECT_TIMEOUT_MS
+        value: "15000"
+      - key: ENABLE_API_DOCS
+        value: "true"
+      - key: INTENT_TTL_MINUTES
+        value: "15"
+
+  - type: web
+    name: ajodesk-web
+    runtime: docker
+    plan: free
+    region: ohio
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    healthCheckPath: /login
+    autoDeployTrigger: commit
+    buildFilter:
+      paths:
+        - apps/web/**
+        - package.json
+        - package-lock.json
+    envVars:
+      # Public HTTPS URL of ajodesk-api, e.g. https://ajodesk-api.onrender.com
+      # (free services can't receive private-network traffic, so this can't be an internal host).
+      - key: API_URL
+        sync: false
+      # A sleeping free API takes ~1 minute to wake; don't fail the first request.
+      - key: API_TIMEOUT_MS
+        value: "70000"
